@@ -1,7 +1,8 @@
 const mongoose = require('mongoose')
 const validator = require('validator')
+const bcrypt = require('bcryptjs')
 
-const User = mongoose.model('User',{
+const userSchema = new mongoose.Schema({
     name:{
         type: String,
         required: true,
@@ -37,5 +38,17 @@ const User = mongoose.model('User',{
         }
     }
 })
+
+// middleware for hashing passwords
+// Note that middleware(advance feature) are surpassed by certain queries(like update in patch route) => so amek sure to update logic in thise places so that middleware is compatable
+userSchema.pre('save', async function(next){
+    const user = this
+    if(user.isModified('password')){
+        user.password = await bcrypt.hash(user.password, 8) // 8 -> optiaml number of times hashing algo should run for perfect balance between speed ans security
+    }
+    next() // Very important for middlewares -> it marks the end of middleware code and calls whatever next function
+})
+
+const User = mongoose.model('User', userSchema)
 
 module.exports = User

@@ -46,17 +46,21 @@ router.patch('/users/:id',async (req,res)=>{
     const updatesRequested = Object.keys(req.body)
     const allowedUpdates = ['name','age','password','email']
     const isValid = updatesRequested.every((update) => allowedUpdates.includes(update))
-
     if(!isValid){
         return res.status(400).send({error: 'Invalid updates!'})
     }
-
     try{
-        const user = await User.findByIdAndUpdate(req.params.id,req.body,{new:true, runValidators:true})
-            if(!user) {
-                return res.status(400).send()
-            }
-            res.send(user)
+        // Note that middleware(advance feature) is surpassed by certain queries(like update in patch route) => so cant use below one line code
+        //const user = await User.findByIdAndUpdate(req.params.id,req.body,{new:true, runValidators:true})
+        
+        // alternative logic for updating which is compatable with middleware
+        const user = await User.findById(req.params.id)
+        if(!user) {
+            return res.status(400).send('no user')
+        }
+        updatesRequested.forEach((update) => user[update] = req.body[update])
+        await user.save()
+        res.send(user)
     }catch(e){
         res.status(400).send(e)
     }
