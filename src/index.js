@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000
 app = express()
 
 // tells express to automatically parse incoming JSON to object
-app.use(express.json(3))
+app.use(express.json())
 
 // registring the routers with express
 app.use(userRouter)

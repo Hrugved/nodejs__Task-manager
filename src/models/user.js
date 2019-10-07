@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 
 const userSchema = new mongoose.Schema({
     name:{
@@ -19,6 +20,7 @@ const userSchema = new mongoose.Schema({
     },
     email:{
         type: String,
+        unique: true, // one email to only one user
         trim: true,
         validate(value){
             if(!validator.isEmail(value)){
@@ -36,11 +38,39 @@ const userSchema = new mongoose.Schema({
                 throw new Error('password can\'t contain \'password\'')
             }
         }
-    }
+    },
+    tokens: [{ // json web tokens (jwt's)
+        token: {
+            type: String,
+            required: true
+        }
+    }]
 })
 
-// middleware for hashing passwords
-// Note that middleware(advance feature) are surpassed by certain queries(like update in patch route) => so amek sure to update logic in thise places so that middleware is compatable
+// building custom queries on schema( object) itself=> 
+    //defined as <schema>.statics.<customFunction>  
+    //accessible on <schema> itself , as <schema>.<customFunction>
+userSchema.statics.findUserByCredentials = async (email,password) => {
+    const user = await User.findOne({email}) // recall its shortcut for email:email (whenever key & value have same name)
+    if(!user) { throw new Error('Unable to login!') }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if(!isMatch) { throw new Error('Unable to login!') }
+    return user
+}
+
+// building custom queries on instances of schema( object) => 
+    //defined as : <schema>.methods.<customFunction>  
+    //accessible on <an_Instance_of_schema> itself as : <an_Instance_of_schema>.<customFunction>
+userSchema.methods.generateToken = async function() {
+    const user = this // whenever using 'this', dont use arrow-functions as they dont bind 'this'
+    const token = jwt.sign({ _id : user.id.toString() }, 'this_is_a_secret_key')
+    user.tokens = user.tokens.concat({token})
+    await user.save()
+    return token
+}
+
+// middleware for hashing plain text passwords to hashed passwords
+// Note that middleware(advance feature) are surpassed by certain queries(like update in patch route) => so use alternate queries(middleware is compatable) instead of them
 userSchema.pre('save', async function(next){
     const user = this
     if(user.isModified('password')){

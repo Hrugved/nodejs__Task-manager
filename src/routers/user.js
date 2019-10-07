@@ -1,14 +1,28 @@
 const express = require('express')
 const User = require('../models/user')
+const jwt = require('jsonwebtoken')
 
 const router = new express.Router()
 
+// create new user
 router.post('/users', async (req,res) => {
     const user = new User(req.body)
 
     try{
         await user.save()
+        const token = await user.generateToken()
         res.status(201).send(user)
+    }catch(e){
+        res.status(400).send(e)
+    }
+})
+
+// login user
+router.post('/users/login',async (req,res)=>{
+    try{
+        const user = await User.findUserByCredentials(req.body.email, req.body.password)
+        const token = await user.generateToken()
+        res.send({user,token})
     }catch(e){
         res.status(400).send(e)
     }

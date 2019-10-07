@@ -1,0 +1,3 @@
+# forgetting slashes in routes : using 'users/login' instead of '/users/login'
+# connecting to mongo database (in powershell) : ./mongod.exe --dbpath="<database path>" 
+# forgotting writing 'async' and 'await' at required places
