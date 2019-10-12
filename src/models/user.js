@@ -69,6 +69,14 @@ userSchema.methods.generateToken = async function() {
     return token
 }
 
+userSchema.methods.toJSON = function() {  // toJSON is special method : res.send(obj) --> obj.toJSON --> JSON.stringify(obj) --> sent 
+    const user = this                     // that means object to be send can be manipulated in toJSON method                                                              
+    const userObject = user.toObject()
+    delete userObject.password
+    delete userObject.tokens
+    return userObject
+}
+
 // middleware for hashing plain text passwords to hashed passwords
 // Note that middleware(advance feature) are surpassed by certain queries(like update in patch route) => so use alternate queries(middleware is compatable) instead of them
 userSchema.pre('save', async function(next){

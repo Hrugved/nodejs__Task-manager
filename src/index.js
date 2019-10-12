@@ -10,7 +10,6 @@ app = express()
 
 // tells express to automatically parse incoming JSON to object
 app.use(express.json())
-
 // registring the routers with express
 app.use(userRouter)
 app.use(taskRouter)

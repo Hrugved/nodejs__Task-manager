@@ -1,20 +1,20 @@
 const express = require('express')
 const User = require('../models/user')
-const jwt = require('jsonwebtoken')
+//const jwt = require('jsonwebtoken')
+auth = require('../middleware/authentication')
 
 const router = new express.Router()
 
 // create new user
 router.post('/users', async (req,res) => {
     const user = new User(req.body)
-
     try{
         await user.save()
         const token = await user.generateToken()
-        res.status(201).send(user)
+        res.status(201).send({user,token})
     }catch(e){
         res.status(400).send(e)
-    }
+     }
 })
 
 // login user
@@ -28,35 +28,40 @@ router.post('/users/login',async (req,res)=>{
     }
 })
 
-//send back all users
-router.get('/users',async (req,res)=>{
-    
-    try{
-        const users = await User.find({})
-        res.send(users)
-    }catch(e){
-        res.status(500).send(e)
+// logout user
+router.post('/users/logout',auth,async (req,res) => {
+    try{    
+        //remove the current token from user's token array
+        req.user.tokens = req.user.tokens.filter(token => {
+            return token.token !== req.token // remember a token(inside tokens array in user models) is an object : token and _id(provided by mongodb)
+        })
+        await req.user.save()
+        res.send()
+    } catch(e) {
+        res.status(500).send()
     }
 })
 
-//send back user requested by id
-router.get('/users/:id',async (req,res)=>{
-    const _id = req.params.id
-
+// logout user (all sessions)
+router.post('/users/logoutAll', auth, async (req,res) => {
     try{
-        user = await User.findById(_id)
-        if(!user) {
-            return res.status(404).send()
-        }
-        res.send(user)
-    }catch(e){
-        res.status(500).send(e)
+        // empty the user's token array
+        req.user.tokens = [];
+        await req.user.save()
+        res.send()
+    } catch(e) {
+        res.status(500).send()
     }
+})
 
+
+//send back user profile
+router.get('/users/me', auth,async (req,res)=>{
+    res.send(req.user)
 })
 
 //update user
-router.patch('/users/:id',async (req,res)=>{
+router.patch('/users/me', auth,async (req,res)=>{
     const updatesRequested = Object.keys(req.body)
     const allowedUpdates = ['name','age','password','email']
     const isValid = updatesRequested.every((update) => allowedUpdates.includes(update))
@@ -64,30 +69,23 @@ router.patch('/users/:id',async (req,res)=>{
         return res.status(400).send({error: 'Invalid updates!'})
     }
     try{
-        // Note that middleware(advance feature) is surpassed by certain queries(like update in patch route) => so cant use below one line code
-        //const user = await User.findByIdAndUpdate(req.params.id,req.body,{new:true, runValidators:true})
-        
-        // alternative logic for updating which is compatable with middleware
-        const user = await User.findById(req.params.id)
-        if(!user) {
-            return res.status(400).send('no user')
-        }
-        updatesRequested.forEach((update) => user[update] = req.body[update])
-        await user.save()
-        res.send(user)
+        updatesRequested.forEach((update) => req.user[update] = req.body[update])
+        await req.user.save()
+        res.send(req.user)
     }catch(e){
         res.status(400).send(e)
     }
 })
 
 //Deletes user
-router.delete('/users/:id',async (req,res)=>{
+router.delete('/users/me', auth, async (req,res)=>{
     try{
-        const user = await User.findByIdAndDelete(req.params.id)
-        if(!user){
-            return res.status(404).send()
-        }
-        res.send(user)
+        // const user = await User.findByIdAndDelete(req.user._id)
+        // if(!user){
+        //     return res.status(404).send()
+        // }
+        await req.user.remove()
+        res.send(req.user)
     }catch(e){
         res.status(500).send(e)
     }
