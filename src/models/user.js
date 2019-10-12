@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const Task = require('./task')
 
 const userSchema = new mongoose.Schema({
     name:{
@@ -47,6 +48,16 @@ const userSchema = new mongoose.Schema({
     }]
 })
 
+// informing mongoose about relationship between users and tasks by virtually setting up a (virtual)field called 'tasks'
+// relationship --> 'localField' ( of this 'Schema') is related to 'ForeignField' field of 'ref'(Schema)
+// relationship --> '_id' ( of this 'User') is related to 'owner' field of 'Task'
+// So populating user.tasks(virtual field on users) will not affect the actual user document 
+userSchema.virtual('tasks', {
+    ref: 'Task',
+    localField: '_id',
+    foreignField: 'owner'
+})
+
 // building custom queries on schema( object) itself=> 
     //defined as <schema>.statics.<customFunction>  
     //accessible on <schema> itself , as <schema>.<customFunction>
@@ -79,12 +90,21 @@ userSchema.methods.toJSON = function() {  // toJSON is special method : res.send
 
 // middleware for hashing plain text passwords to hashed passwords
 // Note that middleware(advance feature) are surpassed by certain queries(like update in patch route) => so use alternate queries(middleware is compatable) instead of them
+// run this before(pre) user.save()
 userSchema.pre('save', async function(next){
     const user = this
     if(user.isModified('password')){
         user.password = await bcrypt.hash(user.password, 8) // 8 -> optiaml number of times hashing algo should run for perfect balance between speed ans security
     }
     next() // Very important for middlewares -> it marks the end of middleware code and calls whatever next function
+})
+
+// middleware for deleting all user's task if the user is deleted
+// run this before(pre) user.remove()
+userSchema.pre('remove', async function(next){
+    const user = this
+    await Task.deleteMany({owner:user._id})
+    next()
 })
 
 const User = mongoose.model('User', userSchema)

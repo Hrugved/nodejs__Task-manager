@@ -80,12 +80,9 @@ router.patch('/users/me', auth,async (req,res)=>{
 //Deletes user
 router.delete('/users/me', auth, async (req,res)=>{
     try{
-        // const user = await User.findByIdAndDelete(req.user._id)
-        // if(!user){
-        //     return res.status(404).send()
-        // }
+        // we have setup middleware for deleting all tasks of this user
         await req.user.remove()
-        res.send(req.user)
+        res.send()
     }catch(e){
         res.status(500).send(e)
     }
