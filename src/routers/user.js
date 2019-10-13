@@ -1,7 +1,8 @@
 const express = require('express')
 const User = require('../models/user')
-//const jwt = require('jsonwebtoken')
-auth = require('../middleware/authentication')
+const sharp = require('sharp')
+const auth = require('../middleware/authentication')
+const multer = require('multer')
 
 const router = new express.Router()
 
@@ -85,6 +86,56 @@ router.delete('/users/me', auth, async (req,res)=>{
         res.send()
     }catch(e){
         res.status(500).send(e)
+    }
+})
+
+const upload = multer({
+    limits: {
+        fileSize: 1000000
+    },
+    fileFilter(req,file,cb)  { // cb -> callback
+        if(!file.originalname.match(/\.(jpeg|jpg|png)$/)){  // this is regexp
+            cb(new Error('Image must be jpeg, jpg or png.'))
+        }
+        cb(undefined,true) // (no error, upload: true)
+    }
+})
+
+// Upload user avatar
+router.post('/users/me/avatar', auth, upload.single('avatar'), async (req,res) => {
+    const buffer = await sharp(req.file.buffer).resize({width: 250, height: 250}).png().toBuffer()
+    req.user.avatar = buffer;
+    await req.user.save()
+    res.send()
+},(e,req,res,next) => {                         // a 4th argument with such signature tells express that it is error handler function
+    res.status(400).send({error:e.message})
+})
+
+// Delete user avatar
+router.delete('/users/me/avatar', auth, async (req,res) => {
+    try{
+        req.user.avatar = undefined
+        await req.user.save()
+        res.send()
+    } catch(e){
+        res.status(500).send(e)
+    }
+})
+
+// Send back avatar
+router.get('/users/:id/avatar', async (req,res) => {
+    try{
+        const user = await User.findById(req.params.id)
+        
+        if(!user || !user.avatar){
+            throw new Error()
+        }
+
+        res.set('Content-Type','image/png') // setting up key-value in response header to tell browser the correct way to render the data
+        res.send(user.avatar)
+
+    } catch(e) {
+        res.status(404).send()
     }
 })
 
