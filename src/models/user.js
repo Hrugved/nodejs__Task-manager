@@ -46,6 +46,8 @@ const userSchema = new mongoose.Schema({
             required: true
         }
     }]
+},{
+    timestamps: true
 })
 
 // informing mongoose about relationship between users and tasks by virtually setting up a (virtual)field called 'tasks'
