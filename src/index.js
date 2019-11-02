@@ -5,7 +5,7 @@ const Task = require('./models/task')
 const userRouter = require('./routers/user')
 const taskRouter = require('./routers/task')
 
-const port = process.env.PORT || 3000
+const port = process.env.PORT
 app = express()
 
 // tells express to automatically parse incoming JSON to object

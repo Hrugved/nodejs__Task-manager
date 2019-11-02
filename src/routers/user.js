@@ -3,6 +3,7 @@ const User = require('../models/user')
 const sharp = require('sharp')
 const auth = require('../middleware/authentication')
 const multer = require('multer')
+const { sendWelcomeEmail, sendCancellationEmail } = require('../emails/account')
 
 const router = new express.Router()
 
@@ -11,6 +12,7 @@ router.post('/users', async (req,res) => {
     const user = new User(req.body)
     try{
         await user.save()
+        sendWelcomeEmail(user.email,user.name)
         const token = await user.generateToken()
         res.status(201).send({user,token})
     }catch(e){
@@ -78,11 +80,12 @@ router.patch('/users/me', auth,async (req,res)=>{
     }
 })
 
-//Deletes user
+//Delete user
 router.delete('/users/me', auth, async (req,res)=>{
     try{
-        // we have setup middleware for deleting all tasks of this user
+        // we have setup middleware for deleting all tasks/avatar of this user
         await req.user.remove()
+        sendCancellationEmail(req.user.email,req.user.name)
         res.send()
     }catch(e){
         res.status(500).send(e)
