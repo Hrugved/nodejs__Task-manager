@@ -1,32 +1,9 @@
 const request = require('supertest')
 const app = require('../src/app')
 const User = require('../src/models/user')
-const mongoose = require('mongoose')
-const jwt = require('jsonwebtoken')
+const {userOne, userOneId, badUser, seedDatabase} = require('./fixtures/db.js')
 
-const userOneId = new mongoose.Types.ObjectId()
-const userOne = {
-    _id : userOneId,
-    name: "mike",
-    email: "mike@example.com",
-    password: "pass123098",
-    tokens: [{
-        token: jwt.sign({_id:userOneId},process.env.JWT_SECRET)
-    }]
-}
-
-// bad credentials
-const badUser = {
-    name: "mike",
-    email: "mike@example.com",
-    password: "password"
-}
-
-// Start with empty database
-beforeEach(async () => {
-    await User.deleteMany()
-    await new User(userOne).save()
-})
+beforeEach(seedDatabase)
 
 // test is provided to us globally by jest, so we dont need to import jest
 test('Should sign up a user', async () => {
@@ -100,4 +77,33 @@ test('Should not delete for unauthenticated user', async () => {
     await request(app).delete('/users/me')
             .send()
             .expect(401) // failed at auth middleware => 401
+})
+
+test('Should upload avatar image', async () => {
+    await request(app).post('/users/me/avatar')
+            .set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+            .attach('avatar','tests/fixtures/profile.jpg')
+            .expect(200)
+    const user = await User.findById(userOneId)
+    expect(user.avatar).toEqual(expect.any(Buffer)) // use toEqual instead of toBe(same as ===), as {} === {} -> falsey        
+})
+
+test('Should update valid user fields', async () => {
+    await request(app).patch('/users/me')
+            .set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+            .send({
+                name:'Michael'
+            })
+            .expect(200)
+    const user = await User.findById(userOneId)
+    expect(user.name).toBe('Michael')
+})
+
+test('Should not update invalid user fields', async () => {
+    await request(app).patch('/users/me')
+            .set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+            .send({
+                tokens: []
+            })
+            .expect(400)
 })
